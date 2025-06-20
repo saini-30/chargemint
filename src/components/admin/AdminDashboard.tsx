@@ -1,24 +1,33 @@
-import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   DollarSign, 
   TrendingUp, 
   Clock,
   Search,
-  Filter,
   Check,
   X,
-  Eye,
   Settings
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { User } from '../../types';
+
+interface DashboardStats {
+  totalUsers: number;
+  activeUsers: number;
+  totalTopUps: number;
+  totalROIPaid: number;
+  pendingWithdrawals: number;
+}
+
+type TabType = 'dashboard' | 'users' | 'withdrawals';
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [dashboardStats, setDashboardStats] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [withdrawals, setWithdrawals] = useState([]);
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]); // Use a proper type if available
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -60,7 +69,12 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleWithdrawalAction = async (userId, withdrawalId, status, notes = '') => {
+  const handleWithdrawalAction = async (
+    userId: string, 
+    withdrawalId: string, 
+    status: string, 
+    notes = ''
+  ) => {
     try {
       await axios.put(`http://localhost:5000/api/admin/withdrawal/${userId}/${withdrawalId}`, {
         status,
@@ -73,7 +87,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const toggleUserStatus = async (userId, currentStatus) => {
+  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
       await axios.put(`http://localhost:5000/api/admin/user/${userId}/status`, {
         isActive: !currentStatus
@@ -124,7 +138,7 @@ const AdminDashboard = () => {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setActiveTab(tab.id as TabType)}
                 className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.id
                     ? 'border-purple-500 text-purple-400'
@@ -181,31 +195,24 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-orange-500/20 rounded-2xl p-6">
+              <div className="bg-slate-800/50 backdrop-blur-sm border border-yellow-500/20 rounded-2xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-400 text-sm">ROI Paid</p>
-                    <p className="text-2xl font-bold text-orange-400">₹{dashboardStats.totalROIPaid.toFixed(2)}</p>
+                    <p className="text-gray-400 text-sm">Total ROI Paid</p>
+                    <p className="text-2xl font-bold text-yellow-400">₹{dashboardStats.totalROIPaid.toFixed(2)}</p>
                   </div>
-                  <div className="p-3 bg-gradient-to-r from-orange-600 to-orange-700 rounded-xl">
+                  <div className="p-3 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-xl">
                     <DollarSign className="w-6 h-6 text-white" />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Pending Withdrawals Summary */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-purple-500/20 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-white mb-4">Pending Withdrawals</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-gray-400">Total Requests</p>
-                  <p className="text-3xl font-bold text-purple-400">{dashboardStats.pendingWithdrawals.count}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Total Amount</p>
-                  <p className="text-3xl font-bold text-purple-400">₹{dashboardStats.pendingWithdrawals.amount.toFixed(2)}</p>
-                </div>
+            {/* Pending Withdrawals */}
+            <div className="bg-slate-800/50 border border-purple-500/20 rounded-2xl p-6 mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">Pending Withdrawals</h2>
+                <span className="text-2xl font-bold text-purple-400">{dashboardStats.pendingWithdrawals}</span>
               </div>
             </div>
           </div>
@@ -246,7 +253,7 @@ const AdminDashboard = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {users.map((user) => (
-                      <tr key={user._id} className="hover:bg-slate-700/30">
+                      <tr key={user.id} className="hover:bg-slate-700/30">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-white">{user.name}</div>
@@ -267,23 +274,23 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.isActive 
+                            user.roiSettings.isActive 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-red-100 text-red-800'
                           }`}>
-                            {user.isActive ? 'Active' : 'Inactive'}
+                            {user.roiSettings.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button
-                            onClick={() => toggleUserStatus(user._id, user.isActive)}
+                            onClick={() => toggleUserStatus(user.id, user.roiSettings.isActive)}
                             className={`mr-2 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                              user.isActive
+                              user.roiSettings.isActive
                                 ? 'bg-red-600 hover:bg-red-700 text-white'
                                 : 'bg-green-600 hover:bg-green-700 text-white'
                             }`}
                           >
-                            {user.isActive ? 'Deactivate' : 'Activate'}
+                            {user.roiSettings.isActive ? 'Deactivate' : 'Activate'}
                           </button>
                         </td>
                       </tr>

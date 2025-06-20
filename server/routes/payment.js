@@ -3,19 +3,27 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import User from '../models/User.js';
 import { authenticateToken } from '../middleware/auth.js';
-
+import dotenv from 'dotenv';
+dotenv.config();
 const router = express.Router();
-
+console.log('Razorpay Key ID:', process.env.RAZORPAY_KEY_ID );
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_key',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret'
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_6NXPQ56tFZkO52',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'harpreetsaini@30'
+
 });
 
 // Create order
 router.post('/create-order', authenticateToken, async (req, res) => {
   try {
     const { amount } = req.body;
-    
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    // Add to pendingTopUp
+    user.wallet.pendingTopUp += amount;
+    await user.save();
     const options = {
       amount: amount * 100, // amount in paise
       currency: 'INR',
@@ -38,24 +46,24 @@ router.post('/create-order', authenticateToken, async (req, res) => {
 router.post('/verify', authenticateToken, async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
-    
+
     const sign = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSign = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret')
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'harpreetsaini@30')
       .update(sign.toString())
       .digest('hex');
 
     if (razorpay_signature === expectedSign) {
       // Payment verified successfully
       const user = await User.findById(req.userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
       const topUpAmount = amount / 100; // Convert from paise to rupees
-      
-      // Update user wallet
+      // Move from pendingTopUp to totalTopUp
+      user.wallet.pendingTopUp = Math.max(0, user.wallet.pendingTopUp - topUpAmount);
       user.wallet.totalTopUp += topUpAmount;
       user.wallet.balance += topUpAmount;
       

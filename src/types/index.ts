@@ -10,6 +10,7 @@ export interface User {
     totalTopUp: number;
     roiEarnings: number;
     commissionEarnings: number;
+    pendingTopUp: number; // Add this line
   };
   roiSettings: {
     isActive: boolean;

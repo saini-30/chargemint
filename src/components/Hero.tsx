@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { TrendingUp, Users, Zap, ArrowRight } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Zap, ArrowRight } from 'lucide-react';
 
 const Hero = () => {
   const coinRef = useRef<HTMLDivElement>(null);

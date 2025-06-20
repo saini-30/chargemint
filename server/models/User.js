@@ -39,7 +39,8 @@ const userSchema = new mongoose.Schema({
     balance: { type: Number, default: 0 },
     roiEarnings: { type: Number, default: 0 },
     commissionEarnings: { type: Number, default: 0 },
-    totalTopUp: { type: Number, default: 0 }
+    totalTopUp: { type: Number, default: 0 },
+    pendingTopUp: { type: Number, default: 0 } // New field for pending top-ups
   },
   roiSettings: {
     dailyRate: { type: Number, default: 2 }, // 2%
@@ -69,7 +70,17 @@ const userSchema = new mongoose.Schema({
     requestDate: { type: Date, default: Date.now },
     processedDate: Date,
     adminNotes: String
-  }]
+  }],
+  firstName: {
+    type: String,
+    required: false,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    required: false,
+    trim: true
+  }
 }, {
   timestamps: true
 });

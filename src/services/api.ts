@@ -25,6 +25,11 @@ export const authAPI = {
     return response.data;
   },
 
+  adminLogin: async (email: string, password: string) => {
+    const response = await axios.post('/auth/admin/login', { email, password });
+    return response.data;
+  },
+
   register: async (userData: {
     name: string;
     email: string;
@@ -33,6 +38,11 @@ export const authAPI = {
     referralCode?: string;
   }) => {
     const response = await axios.post('/auth/register', userData);
+    return response.data;
+  },
+
+  verifyToken: async () => {
+    const response = await axios.get('/auth/verify');
     return response.data;
   }
 };
@@ -91,9 +101,8 @@ export const adminAPI = {
     const response = await axios.patch(`/admin/users/${userId}/status`, { isActive });
     return response.data;
   },
-
-  processWithdrawal: async (userId: string, withdrawalId: string, status: 'approved' | 'rejected') => {
-    const response = await axios.patch(`/admin/withdrawals/${withdrawalId}`, { status });
+  processWithdrawal: async (withdrawalId: string, status: 'approved' | 'rejected', userId: string) => {
+    const response = await axios.patch(`/admin/withdrawals/${withdrawalId}`, { status, userId });
     return response.data;
   }
 };

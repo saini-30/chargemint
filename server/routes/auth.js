@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ const generateToken = (userId) => {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, phone, referralCode } = req.body;
+    const { name, email, password, phone, referralCode, isAdmin, firstName, lastName } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -28,7 +29,10 @@ router.post('/register', async (req, res) => {
       email,
       password,
       phone,
-      referralCode: generateReferralCode()
+      referralCode: generateReferralCode(),
+      isAdmin: isAdmin || false,
+      firstName: firstName || '',
+      lastName: lastName || ''
     });
 
     // Handle referral
@@ -53,7 +57,9 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         referralCode: user.referralCode,
-        isAdmin: user.isAdmin
+        isAdmin: user.isAdmin,
+        firstName: user.firstName,
+        lastName: user.lastName
       }
     });
   } catch (error) {
@@ -91,6 +97,97 @@ router.post('/login', async (req, res) => {
         isAdmin: user.isAdmin
       }
     });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Admin Login
+router.post('/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const admin = await User.findOne({ email, isAdmin: true });
+    if (!admin) {
+      return res.status(401).json({ message: 'Invalid admin credentials' });
+    }
+
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid admin credentials' });
+    }
+
+    const token = jwt.sign(
+      { userId: admin._id },
+      process.env.JWT_SECRET || 'chargemint-secret',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Admin login successful',
+      token,
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        isAdmin: admin.isAdmin
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Create Initial Admin (use this once to create your admin account)
+router.post('/admin/create-initial', async (req, res) => {
+  try {
+    const { name, email, password, secretKey } = req.body;
+
+    // Verify secret key (use this to prevent unauthorized admin creation)
+    if (secretKey !== 'your-secret-admin-key') {
+      return res.status(401).json({ message: 'Invalid secret key' });
+    }
+
+    // Check if admin already exists
+    const existingAdmin = await User.findOne({ isAdmin: true });
+    if (existingAdmin) {
+      return res.status(400).json({ message: 'Admin already exists' });
+    }
+
+    // Create admin user
+    const admin = new User({
+      name,
+      email,
+      password,
+      isAdmin: true,
+      referralCode: 'ADMIN000'
+    });
+
+    await admin.save();
+
+    res.status(201).json({
+      message: 'Admin created successfully',
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        isAdmin: admin.isAdmin
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Verify Token
+router.get('/verify', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ user });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

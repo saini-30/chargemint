@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Wallet, 
@@ -9,7 +9,6 @@ import {
   ArrowUpRight, 
   Copy,
   Eye,
-  Clock,
   DollarSign
 } from 'lucide-react';
 import axios from 'axios';
@@ -17,10 +16,10 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
 const UserDashboard = () => {
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     fetchDashboardData();
@@ -30,8 +29,12 @@ const UserDashboard = () => {
     try {
       const response = await axios.get('http://localhost:5000/api/user/dashboard');
       setDashboardData(response.data);
-    } catch (error) {
-      toast.error('Failed to load dashboard data');
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        toast.error((error as any).response?.data?.message || 'Failed to load dashboard data');
+      } else {
+        toast.error('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }
@@ -43,8 +46,12 @@ const UserDashboard = () => {
       await axios.post('http://localhost:5000/api/user/activate');
       toast.success('ROI activated successfully!');
       fetchDashboardData();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to activate ROI');
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        toast.error((error as any).response?.data?.message || 'Failed to activate ROI');
+      } else {
+        toast.error('Failed to activate ROI');
+      }
     } finally {
       setActivating(false);
     }
@@ -59,6 +66,14 @@ const UserDashboard = () => {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">No dashboard data available.</div>
       </div>
     );
   }
@@ -79,13 +94,21 @@ const UserDashboard = () => {
               </h1>
               <p className="text-gray-300 mt-1">Manage your earnings and referrals</p>
             </div>
-            <Link 
-              to="/topup"
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg shadow-purple-500/25 flex items-center space-x-2"
-            >
-              <Wallet className="w-5 h-5" />
-              <span>Top Up</span>
-            </Link>
+            <div className="flex items-center space-x-4">
+              <Link 
+                to="/topup"
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg shadow-purple-500/25 flex items-center space-x-2"
+              >
+                <Wallet className="w-5 h-5" />
+                <span>Top Up</span>
+              </Link>
+              <button
+                onClick={logout}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -218,7 +241,7 @@ const UserDashboard = () => {
               {userData.referrals.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-semibold text-white">Your Direct Referrals</h4>
-                  {userData.referrals.slice(0, 5).map((referral, index) => (
+                  {userData.referrals.slice(0, 5).map((referral: any, index: number) => (
                     <div key={index} className="flex items-center justify-between bg-slate-700/30 rounded-lg p-3">
                       <div>
                         <p className="text-white font-medium">{referral.name}</p>

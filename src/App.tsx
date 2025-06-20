@@ -28,10 +28,15 @@ const LandingPage = () => (
 );
 
 // Protected Route Component
-const ProtectedRoute = ({ children, adminOnly = false }) => {
-  const { user, loading } = useAuth();
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = false }) => {
+  const { user, isLoading } = useAuth();
   
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
@@ -46,7 +51,15 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   if (adminOnly && !user.isAdmin) {
     return <Navigate to="/dashboard" />;
   }
-  
+
+  // Enforce minimum top-up for non-admin users
+  if (!user.isAdmin && user.wallet?.totalTopUp < 100) {
+    // Allow access to /topup, block dashboard and others
+    if (window.location.pathname !== '/topup') {
+      return <Navigate to="/topup" replace />;
+    }
+  }
+
   return children;
 };
 
@@ -78,9 +91,7 @@ function AppContent() {
         <Route 
           path="/admin" 
           element={
-            <ProtectedRoute adminOnly={true}>
-              <AdminDashboard />
-            </ProtectedRoute>
+            <AdminDashboard />
           } 
         />
       </Routes>
